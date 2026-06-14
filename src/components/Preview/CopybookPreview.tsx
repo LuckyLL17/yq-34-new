@@ -1,8 +1,8 @@
-import { forwardRef, useMemo } from 'react';
+import { forwardRef, useMemo, useRef } from 'react';
 import { useCopybookStore } from '@/store/useCopybookStore';
 import { getFontById } from '@/utils/fonts';
 import GridCell from './GridCell';
-import PageDrawingCanvas from './PageDrawingCanvas';
+import DrawingCanvas from './DrawingCanvas';
 
 interface CopybookPreviewProps {
   className?: string;
@@ -12,6 +12,7 @@ const A4_RATIO = 297 / 210;
 
 const CopybookPreview = forwardRef<HTMLDivElement, CopybookPreviewProps>(
   ({ className }, ref) => {
+    const containerRef = useRef<HTMLDivElement>(null);
     const config = useCopybookStore();
     const font = getFontById(config.fontId);
 
@@ -76,6 +77,8 @@ const CopybookPreview = forwardRef<HTMLDivElement, CopybookPreviewProps>(
         ref={ref}
         className={`flex flex-col items-center gap-8 ${className || ''}`}
       >
+        <div ref={containerRef} className="relative w-full flex flex-col items-center gap-8">
+          <DrawingCanvas containerRef={containerRef} />
         {pageGroups.map((pageRows, pageIdx) => (
           <div
             key={pageIdx}
@@ -124,7 +127,7 @@ const CopybookPreview = forwardRef<HTMLDivElement, CopybookPreviewProps>(
 
               <div className="flex-1 flex items-center justify-center py-2 overflow-hidden">
                 <div
-                  className="flex flex-col items-center justify-center relative"
+                  className="flex flex-col items-center justify-center"
                   style={{
                     width: gridWidth,
                     height: gridHeight,
@@ -148,11 +151,6 @@ const CopybookPreview = forwardRef<HTMLDivElement, CopybookPreviewProps>(
                       ))}
                     </div>
                   ))}
-                  <PageDrawingCanvas
-                    pageIndex={pageIdx}
-                    pageWidth={gridWidth}
-                    pageHeight={gridHeight}
-                  />
                 </div>
               </div>
 
@@ -171,6 +169,7 @@ const CopybookPreview = forwardRef<HTMLDivElement, CopybookPreviewProps>(
             </div>
           </div>
         ))}
+        </div>
       </div>
     );
   }

@@ -1,10 +1,10 @@
 import { create } from 'zustand';
-import type { CopybookConfig, TextType, GridType, DrawingPath, DrawingConfig, PageDrawingPaths } from '@/types';
+import type { CopybookConfig, TextType, GridType, DrawingPath, DrawingConfig } from '@/types';
 import { DEFAULT_TEXTS } from '@/utils/presetTexts';
 
 interface CopybookState extends CopybookConfig, DrawingConfig {
-  pagePaths: PageDrawingPaths;
-  pageRedoStack: PageDrawingPaths;
+  paths: DrawingPath[];
+  redoStack: DrawingPath[];
   setTextType: (type: TextType) => void;
   setText: (text: string) => void;
   setFontId: (fontId: string) => void;
@@ -22,11 +22,10 @@ interface CopybookState extends CopybookConfig, DrawingConfig {
   setPenColor: (color: string) => void;
   setPenWidth: (width: number) => void;
   setDrawingEnabled: (enabled: boolean) => void;
-  addPathToPage: (pageIndex: number, path: DrawingPath) => void;
-  undoPath: (pageIndex: number) => void;
-  redoPath: (pageIndex: number) => void;
+  addPath: (path: DrawingPath) => void;
+  undoPath: () => void;
+  redoPath: () => void;
   clearAllPaths: () => void;
-  clearPagePaths: (pageIndex: number) => void;
 }
 
 const DEFAULT_CONFIG: CopybookConfig & DrawingConfig = {
@@ -49,8 +48,8 @@ const DEFAULT_CONFIG: CopybookConfig & DrawingConfig = {
 
 export const useCopybookStore = create<CopybookState>((set, get) => ({
   ...DEFAULT_CONFIG,
-  pagePaths: {},
-  pageRedoStack: {},
+  paths: [],
+  redoStack: [],
 
   setTextType: (type) =>
     set(() => {
@@ -80,74 +79,37 @@ export const useCopybookStore = create<CopybookState>((set, get) => ({
   setShowTrace: (showTrace) => set({ showTrace }),
   setTraceOpacity: (traceOpacity) => set({ traceOpacity }),
   updateConfig: (partial) => set(partial),
-  resetConfig: () => set({ ...DEFAULT_CONFIG, pagePaths: {}, pageRedoStack: {} }),
+  resetConfig: () => set({ ...DEFAULT_CONFIG, paths: [], redoStack: [] }),
 
   setPenColor: (penColor) => set({ penColor }),
   setPenWidth: (penWidth) => set({ penWidth: Math.max(1, Math.min(20, penWidth)) }),
   setDrawingEnabled: (drawingEnabled) => set({ drawingEnabled }),
 
-  addPathToPage: (pageIndex, path) =>
-    set((state) => {
-      const pagePaths = state.pagePaths[pageIndex] || [];
-      return {
-        pagePaths: {
-          ...state.pagePaths,
-          [pageIndex]: [...pagePaths, path],
-        },
-        pageRedoStack: {
-          ...state.pageRedoStack,
-          [pageIndex]: [],
-        },
-      };
-    }),
+  addPath: (path) =>
+    set((state) => ({
+      paths: [...state.paths, path],
+      redoStack: [],
+    })),
 
-  undoPath: (pageIndex) => {
-    const { pagePaths, pageRedoStack } = get();
-    const paths = pagePaths[pageIndex] || [];
+  undoPath: () => {
+    const { paths, redoStack } = get();
     if (paths.length === 0) return;
     const lastPath = paths[paths.length - 1];
-    const redoStack = pageRedoStack[pageIndex] || [];
     set({
-      pagePaths: {
-        ...pagePaths,
-        [pageIndex]: paths.slice(0, -1),
-      },
-      pageRedoStack: {
-        ...pageRedoStack,
-        [pageIndex]: [...redoStack, lastPath],
-      },
+      paths: paths.slice(0, -1),
+      redoStack: [...redoStack, lastPath],
     });
   },
 
-  redoPath: (pageIndex) => {
-    const { pagePaths, pageRedoStack } = get();
-    const redoStack = pageRedoStack[pageIndex] || [];
+  redoPath: () => {
+    const { paths, redoStack } = get();
     if (redoStack.length === 0) return;
     const nextPath = redoStack[redoStack.length - 1];
-    const paths = pagePaths[pageIndex] || [];
     set({
-      pagePaths: {
-        ...pagePaths,
-        [pageIndex]: [...paths, nextPath],
-      },
-      pageRedoStack: {
-        ...pageRedoStack,
-        [pageIndex]: redoStack.slice(0, -1),
-      },
+      paths: [...paths, nextPath],
+      redoStack: redoStack.slice(0, -1),
     });
   },
 
-  clearAllPaths: () => set({ pagePaths: {}, pageRedoStack: {} }),
-
-  clearPagePaths: (pageIndex) =>
-    set((state) => {
-      const newPagePaths = { ...state.pagePaths };
-      const newPageRedoStack = { ...state.pageRedoStack };
-      delete newPagePaths[pageIndex];
-      delete newPageRedoStack[pageIndex];
-      return {
-        pagePaths: newPagePaths,
-        pageRedoStack: newPageRedoStack,
-      };
-    }),
+  clearAllPaths: () => set({ paths: [], redoStack: [] }),
 }));
